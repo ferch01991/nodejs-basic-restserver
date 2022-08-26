@@ -32,8 +32,14 @@ router.post('/', [
     check('role').custom( isValidRole ),
     // check('role').custom( (rol) => isValidRole(rol) ), aqui se obvia porque si es un unico argumento que llega es el unico argumento que se envia. 
     fieldValidate
-] ,usersPost)
-router.delete('/', usersDelete)
+] ,usersPost);
+
+router.delete('/:id', [
+    check('id', 'This ID is not valid!').isMongoId(),
+    check('id').custom( hasUserById ),
+    fieldValidate
+], usersDelete)
+
 router.patch('/', usersPatch)
 
 
