@@ -5,21 +5,42 @@ const bcrypt = require('bcryptjs');
 const User = require('../models/user');
 
 
-const usersGet = (req = request, res = response) => {
-    const query = req.query;
+const usersGet = async(req = request, res = response) => {
+    // const query = req.query;
+    const { limit = 5, from = 0 } = req.query;
+    const query = {status: true}
+
+    // const users = await User.find( query )
+    //     .skip(Number(from))
+    //     .limit(Number(limit));
+    // const totalUsers = await User.countDocuments( query );
+
+    // // enviar las 2 consultas de manera simultanea
+    const [ totalUsers, users] = await Promise.all([
+        User.countDocuments(query),
+        User.find(query)
+            .skip(Number(from))
+            .limit(Number(limit))
+        ]
+    )
     res.json({
-        msg: 'get API desde el controller',
-        query
+        totalUsers,
+        users
     })
 }
 
-const usersPut = (req, res = response) => {
+const usersPut = async(req, res = response) => {
     const { id } = req.params;
-    console.log(id)
-    res.json({
-        msg: 'put API - controller',
-        id
-    })
+    const { _id, password, google, ...user } = req.body;
+
+    if (password){
+        const salt = bcrypt.genSaltSync();
+        user.password = bcrypt.hashSync(password, salt);
+    }
+
+    const userUpdate = await User.findByIdAndUpdate(id, user);
+
+    res.json( userUpdate )
 }
 
 const usersPost = async(req, res = response) => {
@@ -29,20 +50,11 @@ const usersPost = async(req, res = response) => {
 
     const user = new User({
         name, email, password, role
-    }); 
-
-    // validar si el correo existe
-    const hasEmail = await User.findOne({email});
-    
-    if (hasEmail){
-        return res.status(400).json({
-            msg: "This email is already Registered!"
-        });
-    }         
+    });        
 
     // encriptar la contraseña
     const salt = bcrypt.genSaltSync();
-    user.password = bcrypt.hashSync(password, salt)
+    user.password = bcrypt.hashSync(password, salt);
     
     // Guardar en la base de datos
     await user.save()
